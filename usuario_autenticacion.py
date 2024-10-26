@@ -1,4 +1,3 @@
-# archivo: usuario_autenticacion.py
 import json
 
 import bcrypt

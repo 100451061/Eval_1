@@ -1,4 +1,3 @@
-# archivo: main_gui.py
 import json
 import tkinter as tk
 from tkinter import messagebox
