@@ -1,4 +1,3 @@
-# archivo: autenticacion_mensajes.py
 import hashlib
 import hmac
 
