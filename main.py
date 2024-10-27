@@ -1,3 +1,4 @@
+# archivo: main.py
 from Crypto.Random import get_random_bytes
 
 from autenticacion_mensajes import generar_mac, verificar_mac

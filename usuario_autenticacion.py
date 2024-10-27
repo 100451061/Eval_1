@@ -1,49 +1,42 @@
-# usuario_autenticacion.py
-import base64
+# archivo: usuario_autenticacion.py
 import json
-import os
 
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+import bcrypt
 
 
-# Función para derivar la clave
-def derivar_clave(password, salt=None):
-    if salt is None:
-        salt = os.urandom(16)
-    kdf = PBKDF2HMAC(
-        algorithm=hashes.SHA256(),
-        length=32,
-        salt=salt,
-        iterations=100000,
-        backend=default_backend()
-    )
-    key = base64.urlsafe_b64encode(kdf.derive(password.encode()))
-    return key, salt
+def leer_usuarios():
+    try:
+        with open("usuarios.json", "r") as file:
+            return json.load(file)
+    except FileNotFoundError:
+        return {}
 
 
-# Modificación de la función de registro para almacenar clave derivada y salt
-def guardar_usuario(usuario, password):
-    key, salt = derivar_clave(password)
-    with open("usuarios.json", "r+") as file:
-        usuarios = json.load(file)
-        usuarios[usuario] = {
-            "key": key.decode('utf-8'),  # Almacena la clave derivada
-            "salt": base64.b64encode(salt).decode('utf-8')  # Guarda el salt como texto
-        }
-        file.seek(0)
-        json.dump(usuarios, file, indent=4)
+def guardar_usuario(nombre_usuario, contraseña):
+    usuarios = leer_usuarios()
+    hashed = bcrypt.hashpw(contraseña.encode('utf-8'), bcrypt.gensalt())
+    usuarios[nombre_usuario] = hashed.decode('utf-8')
+    with open("usuarios.json", "w") as file:
+        json.dump(usuarios, file)
 
 
-# Modificación de la función de autenticación para comparar claves derivadas
-def autenticar_usuario(usuario, password):
-    with open("usuarios.json", "r") as file:
-        usuarios = json.load(file)
-    if usuario in usuarios:
-        salt = base64.b64decode(usuarios[usuario]["salt"])
-        stored_key = usuarios[usuario]["key"].encode('utf-8')
-        derived_key, _ = derivar_clave(password, salt)
-        if derived_key == stored_key:
-            return "Autenticación exitosa"
-    return "Autenticación fallida"
+def autenticar_usuario(nombre_usuario, contraseña):
+    usuarios = leer_usuarios()
+    hashed = usuarios.get(nombre_usuario)
+    if not hashed:
+        return "Usuario no encontrado"
+    if bcrypt.checkpw(contraseña.encode('utf-8'), hashed.encode('utf-8')):
+        return "Autenticación exitosa"
+    else:
+        return "Contraseña incorrecta"
+
+
+def borrar_usuario(nombre_usuario):
+    usuarios = leer_usuarios()
+    if nombre_usuario in usuarios:
+        del usuarios[nombre_usuario]
+        with open("usuarios.json", "w") as file:
+            json.dump(usuarios, file)
+        return f"Usuario '{nombre_usuario}' eliminado exitosamente."
+    else:
+        return f"Usuario '{nombre_usuario}' no encontrado."
