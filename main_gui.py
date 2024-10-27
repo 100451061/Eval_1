@@ -118,7 +118,7 @@ def verificar_mac_mensaje():
 if __name__ == '__main__':
     root = tk.Tk()
     root.title("Aplicación de Seguridad y Criptografía")
-    root.geometry("500x600")
+    root.geometry("650x700")
 
     # Sección de Autenticación
     tk.Label(root, text="Usuario:").pack(pady=5)
