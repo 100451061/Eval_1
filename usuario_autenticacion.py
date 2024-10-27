@@ -1,42 +1,44 @@
-# archivo: usuario_autenticacion.py
 import json
+from tkinter import messagebox
 
 import bcrypt
+
+RUTA_USUARIOS = "usuarios.json"
 
 
 def leer_usuarios():
     try:
-        with open("usuarios.json", "r") as file:
+        with open(RUTA_USUARIOS, 'r') as file:
             return json.load(file)
-    except FileNotFoundError:
+    except (FileNotFoundError, json.JSONDecodeError):
         return {}
 
 
-def guardar_usuario(nombre_usuario, contraseña):
+def guardar_usuario(usuario, contraseña):
     usuarios = leer_usuarios()
-    hashed = bcrypt.hashpw(contraseña.encode('utf-8'), bcrypt.gensalt())
-    usuarios[nombre_usuario] = hashed.decode('utf-8')
-    with open("usuarios.json", "w") as file:
-        json.dump(usuarios, file)
+    if usuario in usuarios:
+        messagebox.showerror("Error", "El usuario ya existe.")
+        return
+
+    hashed = bcrypt.hashpw(contraseña.encode(), bcrypt.gensalt())
+    usuarios[usuario] = hashed.decode()
+
+    with open(RUTA_USUARIOS, 'w') as file:
+        json.dump(usuarios, file, indent=4)
 
 
-def autenticar_usuario(nombre_usuario, contraseña):
+def autenticar_usuario(usuario, contraseña):
     usuarios = leer_usuarios()
-    hashed = usuarios.get(nombre_usuario)
-    if not hashed:
-        return "Usuario no encontrado"
-    if bcrypt.checkpw(contraseña.encode('utf-8'), hashed.encode('utf-8')):
+    if usuario in usuarios and bcrypt.checkpw(contraseña.encode(), usuarios[usuario].encode()):
         return "Autenticación exitosa"
-    else:
-        return "Contraseña incorrecta"
+    return "Usuario o contraseña incorrecta"
 
 
-def borrar_usuario(nombre_usuario):
+def borrar_usuario(usuario):
     usuarios = leer_usuarios()
-    if nombre_usuario in usuarios:
-        del usuarios[nombre_usuario]
-        with open("usuarios.json", "w") as file:
-            json.dump(usuarios, file)
-        return f"Usuario '{nombre_usuario}' eliminado exitosamente."
-    else:
-        return f"Usuario '{nombre_usuario}' no encontrado."
+    if usuario in usuarios:
+        del usuarios[usuario]
+        with open(RUTA_USUARIOS, 'w') as file:
+            json.dump(usuarios, file, indent=4)
+        return "Usuario eliminado exitosamente"
+    return "Usuario no encontrado"

@@ -1,13 +1,13 @@
-# archivo: autenticacion_mensajes.py
-import hashlib
 import hmac
+import hashlib
+from base64 import b64encode, b64decode
 
 
 def generar_mac(mensaje, clave):
-    mac = hmac.new(clave, mensaje.encode('utf-8'), hashlib.sha256).hexdigest()
-    return mac
+    mac = hmac.new(clave, mensaje.encode(), hashlib.sha256)
+    return b64encode(mac.digest()).decode()
 
 
-def verificar_mac(mensaje, mac, clave):
-    mac_nuevo = hmac.new(clave, mensaje.encode('utf-8'), hashlib.sha256).hexdigest()
-    return hmac.compare_digest(mac, mac_nuevo)
+def verificar_mac(mensaje, mac_recibido, clave):
+    mac_calculado = generar_mac(mensaje, clave)
+    return hmac.compare_digest(mac_calculado, mac_recibido)

@@ -1,4 +1,3 @@
-# archivo: main_gui.py
 import json
 import tkinter as tk
 from tkinter import messagebox
@@ -19,7 +18,7 @@ RUTA_MENSAJES_CIFRADOS = "mensajes_cifrados.json"
 # Función para limpiar el archivo de mensajes cifrados
 def limpiar_mensajes_cifrados():
     with open(RUTA_MENSAJES_CIFRADOS, 'w') as file:
-        json.dump([], file)  # Guarda una lista vacía para iniciar desde cero
+        json.dump([], file)
 
 
 # Llamamos a esta función al iniciar la aplicación para limpiar el archivo de mensajes
@@ -119,7 +118,7 @@ def verificar_mac_mensaje():
 if __name__ == '__main__':
     root = tk.Tk()
     root.title("Aplicación de Seguridad y Criptografía")
-    root.geometry("700x700")
+    root.geometry("500x600")
 
     # Sección de Autenticación
     tk.Label(root, text="Usuario:").pack(pady=5)
