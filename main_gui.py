@@ -8,6 +8,7 @@ from Crypto.Cipher import AES
 from Crypto.Protocol.KDF import PBKDF2
 from Crypto.Random import get_random_bytes
 
+from autenticacion_mensajes import generar_mac, verificar_mac
 from cifrado_simetrico import cifrar_datos, descifrar_datos
 from usuario_autenticacion import guardar_usuario, autenticar_usuario, borrar_usuario
 
@@ -89,7 +90,7 @@ def guardar_mensaje_cifrado(iv, ct):
             json.dump(datos, file, indent=4)
 
 
-# Resto de las funciones para la interfaz gráfica (cifrado, descifrado, etc.)
+# Funciones para la interfaz gráfica (cifrado, descifrado, etc.)
 def registrar_usuario():
     usuario = entry_usuario.get()
     contraseña = entry_contraseña.get()
@@ -147,6 +148,28 @@ def descifrar_mensaje():
         message_log.insert(tk.END, "Error: El IV y el Texto Cifrado son obligatorios para descifrar.\n")
 
 
+def generar_mac_mensaje():
+    mensaje = entry_mensaje.get()
+    if mensaje:
+        mac = generar_mac(mensaje, clave_simetrica)
+        entry_mac.delete(0, tk.END)
+        entry_mac.insert(0, mac)
+        message_log.insert(tk.END, "MAC generado correctamente.\n")
+    else:
+        message_log.insert(tk.END, "Error: El campo de mensaje no puede estar vacío.\n")
+
+
+def verificar_mac_mensaje():
+    mensaje = entry_mensaje.get()
+    mac = entry_mac.get()
+    if mensaje and mac:
+        es_valido = verificar_mac(mensaje, mac, clave_simetrica)
+        resultado = "MAC válido" if es_valido else "MAC no válido"
+        message_log.insert(tk.END, f"Verificación de MAC: {resultado}\n")
+    else:
+        message_log.insert(tk.END, "Error: El Mensaje y el MAC son obligatorios para la verificación.\n")
+
+
 def abrir_ventana_datos():
     ventana_datos = tk.Toplevel()
     ventana_datos.title("Hospital Gregorio Marañón - Gestión de Datos")
@@ -176,6 +199,9 @@ def abrir_ventana_datos():
     global entry_mac
     entry_mac = tk.Entry(ventana_datos, width=60)
     entry_mac.pack(pady=5)
+
+    tk.Button(ventana_datos, text="Generar MAC", command=generar_mac_mensaje, bg="lightblue").pack(pady=5)
+    tk.Button(ventana_datos, text="Verificar MAC", command=verificar_mac_mensaje, bg="lightgreen").pack(pady=5)
 
     tk.Label(ventana_datos, text="Registro de Operaciones", font=("Arial", 12, "bold")).pack(pady=5)
     global message_log
