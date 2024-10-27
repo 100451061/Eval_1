@@ -1,32 +1,35 @@
-import json
+import sqlite3
 from tkinter import messagebox
 
 import bcrypt
 
-RUTA_USUARIOS = "usuarios.json"
+DB_PATH = "hospital.db"
 
 
+# Leer usuarios desde la base de datos
 def leer_usuarios():
-    try:
-        with open(RUTA_USUARIOS, 'r') as file:
-            return json.load(file)
-    except (FileNotFoundError, json.JSONDecodeError):
-        return {}
+    conexion = sqlite3.connect(DB_PATH)
+    cursor = conexion.cursor()
+    cursor.execute("SELECT usuario, contraseña FROM usuarios")
+    usuarios = {row[0]: row[1] for row in cursor.fetchall()}
+    conexion.close()
+    return usuarios
 
 
+# Guardar usuario con contraseña encriptada usando bcrypt
 def guardar_usuario(usuario, contraseña):
-    usuarios = leer_usuarios()
-    if usuario in usuarios:
+    if usuario in leer_usuarios():
         messagebox.showerror("Error", "El usuario ya existe.")
         return
+    hashed = bcrypt.hashpw(contraseña.encode(), bcrypt.gensalt()).decode()
+    conexion = sqlite3.connect(DB_PATH)
+    cursor = conexion.cursor()
+    cursor.execute("INSERT INTO usuarios (usuario, contraseña) VALUES (?, ?)", (usuario, hashed))
+    conexion.commit()
+    conexion.close()
 
-    hashed = bcrypt.hashpw(contraseña.encode(), bcrypt.gensalt())
-    usuarios[usuario] = hashed.decode()
 
-    with open(RUTA_USUARIOS, 'w') as file:
-        json.dump(usuarios, file, indent=4)
-
-
+# Autenticar usuario verificando su contraseña
 def autenticar_usuario(usuario, contraseña):
     usuarios = leer_usuarios()
     if usuario in usuarios and bcrypt.checkpw(contraseña.encode(), usuarios[usuario].encode()):
@@ -34,11 +37,11 @@ def autenticar_usuario(usuario, contraseña):
     return "Usuario o contraseña incorrecta"
 
 
+# Borrar usuario de la base de datos
 def borrar_usuario(usuario):
-    usuarios = leer_usuarios()
-    if usuario in usuarios:
-        del usuarios[usuario]
-        with open(RUTA_USUARIOS, 'w') as file:
-            json.dump(usuarios, file, indent=4)
-        return "Usuario eliminado exitosamente"
-    return "Usuario no encontrado"
+    conexion = sqlite3.connect(DB_PATH)
+    cursor = conexion.cursor()
+    cursor.execute("DELETE FROM usuarios WHERE usuario = ?", (usuario,))
+    conexion.commit()
+    conexion.close()
+    return "Usuario eliminado exitosamente" if cursor.rowcount > 0 else "Usuario no encontrado"

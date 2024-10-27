@@ -4,6 +4,7 @@ from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 
 
+# Cifrar datos con AES en modo CBC
 def cifrar_datos(mensaje, clave):
     cipher = AES.new(clave, AES.MODE_CBC)
     ct_bytes = cipher.encrypt(pad(mensaje.encode(), AES.block_size))
@@ -12,6 +13,7 @@ def cifrar_datos(mensaje, clave):
     return iv, ct
 
 
+# Descifrar datos con AES en modo CBC
 def descifrar_datos(iv, ct, clave):
     iv = b64decode(iv)
     ct = b64decode(ct)

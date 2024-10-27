@@ -8,10 +8,12 @@ from Crypto.Cipher import AES
 from Crypto.Protocol.KDF import PBKDF2
 from Crypto.Random import get_random_bytes
 
-from autenticacion_mensajes import generar_mac, verificar_mac
+from autenticacion_mensajes import generar_mac, verificar_mac  # Asegúrate de incluir esta línea
+# Importar las funciones necesarias desde otros módulos
 from cifrado_simetrico import cifrar_datos, descifrar_datos
 from usuario_autenticacion import guardar_usuario, autenticar_usuario, borrar_usuario
 
+# Rutas de archivos
 RUTA_CLAVE = "clave_cifrada.json"
 RUTA_MENSAJES_CIFRADOS = "mensajes_cifrados.json"
 
@@ -90,7 +92,7 @@ def guardar_mensaje_cifrado(iv, ct):
             json.dump(datos, file, indent=4)
 
 
-# Funciones para la interfaz gráfica (cifrado, descifrado, etc.)
+# Resto de las funciones para la interfaz gráfica (cifrado, descifrado, etc.)
 def registrar_usuario():
     usuario = entry_usuario.get()
     contraseña = entry_contraseña.get()
@@ -148,6 +150,44 @@ def descifrar_mensaje():
         message_log.insert(tk.END, "Error: El IV y el Texto Cifrado son obligatorios para descifrar.\n")
 
 
+def abrir_ventana_datos():
+    global entry_mensaje, entry_iv, entry_ct, entry_mac, message_log
+    ventana_datos = tk.Toplevel()
+    ventana_datos.title("Hospital Gregorio Marañón - Gestión de Datos")
+    ventana_datos.geometry("600x750")
+
+    tk.Label(ventana_datos, text="Gestión de Información Médica", font=("Arial", 16, "bold")).pack(pady=10)
+
+    tk.Label(ventana_datos, text="Mensaje a Cifrar/Descifrar:").pack(pady=5)
+    entry_mensaje = tk.Entry(ventana_datos, width=60)
+    entry_mensaje.pack(pady=5)
+
+    tk.Button(ventana_datos, text="Cifrar Mensaje", command=cifrar_mensaje, bg="lightblue").pack(pady=5)
+    tk.Button(ventana_datos, text="Descifrar Mensaje", command=descifrar_mensaje, bg="lightgreen").pack(pady=5)
+
+    tk.Label(ventana_datos, text="IV (Vector de Inicialización):").pack(pady=5)
+    entry_iv = tk.Entry(ventana_datos, width=60)
+    entry_iv.pack(pady=5)
+
+    tk.Label(ventana_datos, text="Texto     Cifrado:").pack(pady=5)
+    entry_ct = tk.Entry(ventana_datos, width=60)
+    entry_ct.pack(pady=5)
+
+    tk.Label(ventana_datos, text="MAC:").pack(pady=5)
+    entry_mac = tk.Entry(ventana_datos, width=60)
+    entry_mac.pack(pady=5)
+
+    tk.Button(ventana_datos, text="Generar MAC", command=generar_mac_mensaje, bg="lightblue").pack(pady=5)
+    tk.Button(ventana_datos, text="Verificar MAC", command=verificar_mac_mensaje, bg="lightgreen").pack(pady=5)
+
+    tk.Label(ventana_datos, text="Registro de Operaciones", font=("Arial", 12, "bold")).pack(pady=5)
+    message_log = scrolledtext.ScrolledText(ventana_datos, width=70, height=10, wrap=tk.WORD)
+    message_log.pack(pady=10)
+    message_log.insert(tk.END, "Aquí se mostrarán las operaciones realizadas.\n")
+
+    tk.Button(ventana_datos, text="Limpiar Registro", command=lambda: message_log.delete('1.0', tk.END)).pack(pady=5)
+
+
 def generar_mac_mensaje():
     mensaje = entry_mensaje.get()
     if mensaje:
@@ -168,48 +208,6 @@ def verificar_mac_mensaje():
         message_log.insert(tk.END, f"Verificación de MAC: {resultado}\n")
     else:
         message_log.insert(tk.END, "Error: El Mensaje y el MAC son obligatorios para la verificación.\n")
-
-
-def abrir_ventana_datos():
-    ventana_datos = tk.Toplevel()
-    ventana_datos.title("Hospital Gregorio Marañón - Gestión de Datos")
-    ventana_datos.geometry("600x750")
-
-    tk.Label(ventana_datos, text="Gestión de Información Médica", font=("Arial", 16, "bold")).pack(pady=10)
-
-    tk.Label(ventana_datos, text="Mensaje a Cifrar/Descifrar:").pack(pady=5)
-    global entry_mensaje
-    entry_mensaje = tk.Entry(ventana_datos, width=60)
-    entry_mensaje.pack(pady=5)
-
-    tk.Button(ventana_datos, text="Cifrar Mensaje", command=cifrar_mensaje, bg="lightblue").pack(pady=5)
-    tk.Button(ventana_datos, text="Descifrar Mensaje", command=descifrar_mensaje, bg="lightgreen").pack(pady=5)
-
-    tk.Label(ventana_datos, text="IV (Vector de Inicialización):").pack(pady=5)
-    global entry_iv
-    entry_iv = tk.Entry(ventana_datos, width=60)
-    entry_iv.pack(pady=5)
-
-    tk.Label(ventana_datos, text="Texto Cifrado:").pack(pady=5)
-    global entry_ct
-    entry_ct = tk.Entry(ventana_datos, width=60)
-    entry_ct.pack(pady=5)
-
-    tk.Label(ventana_datos, text="MAC:").pack(pady=5)
-    global entry_mac
-    entry_mac = tk.Entry(ventana_datos, width=60)
-    entry_mac.pack(pady=5)
-
-    tk.Button(ventana_datos, text="Generar MAC", command=generar_mac_mensaje, bg="lightblue").pack(pady=5)
-    tk.Button(ventana_datos, text="Verificar MAC", command=verificar_mac_mensaje, bg="lightgreen").pack(pady=5)
-
-    tk.Label(ventana_datos, text="Registro de Operaciones", font=("Arial", 12, "bold")).pack(pady=5)
-    global message_log
-    message_log = scrolledtext.ScrolledText(ventana_datos, width=70, height=10, wrap=tk.WORD)
-    message_log.pack(pady=10)
-    message_log.insert(tk.END, "Aquí se mostrarán las operaciones realizadas.\n")
-
-    tk.Button(ventana_datos, text="Limpiar Registro", command=lambda: message_log.delete('1.0', tk.END)).pack(pady=5)
 
 
 # Ventana de inicio
