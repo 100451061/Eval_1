@@ -149,6 +149,9 @@ def abrir_ventana_datos():
     message_log.pack(pady=10)
     message_log.insert(tk.END, "Aquí se mostrarán las operaciones realizadas.\n")
 
+    # Botón para limpiar el área de registro de operaciones
+    tk.Button(ventana_datos, text="Limpiar Registro", command=lambda: message_log.delete('1.0', tk.END)).pack(pady=5)
+
 
 # Ventana de inicio
 if __name__ == '__main__':
