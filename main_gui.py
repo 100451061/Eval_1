@@ -8,24 +8,22 @@ from autenticacion_mensajes import generar_mac, verificar_mac
 from cifrado_simetrico import cifrar_datos, descifrar_datos
 from usuario_autenticacion import guardar_usuario, autenticar_usuario, borrar_usuario
 
-# Clave de cifrado simétrica para pruebas
+# Clave de cifrado simétrica para datos médicos
 clave_simetrica = get_random_bytes(16)
 
 # Ruta del archivo de mensajes cifrados
 RUTA_MENSAJES_CIFRADOS = "mensajes_cifrados.json"
 
 
-# Función para limpiar el archivo de mensajes cifrados
+# Función para limpiar el archivo de mensajes cifrados al inicio
 def limpiar_mensajes_cifrados():
     with open(RUTA_MENSAJES_CIFRADOS, 'w') as file:
         json.dump([], file)
 
 
-# Llamamos a esta función al iniciar la aplicación para limpiar el archivo de mensajes
-limpiar_mensajes_cifrados()
+limpiar_mensajes_cifrados()  # Limpiar al iniciar la aplicación
 
 
-# Función para guardar un mensaje cifrado en el archivo JSON
 def guardar_mensaje_cifrado(iv, ct):
     try:
         with open(RUTA_MENSAJES_CIFRADOS, 'r+') as file:
@@ -45,7 +43,7 @@ def registrar_usuario():
     contraseña = entry_contraseña.get()
     if usuario and contraseña:
         guardar_usuario(usuario, contraseña)
-        messagebox.showinfo("Registro", "Usuario registrado exitosamente.")
+        messagebox.showinfo("Registro", f"Usuario '{usuario}' registrado en el Hospital Gregorio Marañón.")
     else:
         messagebox.showerror("Error", "Ambos campos son obligatorios.")
 
@@ -117,10 +115,14 @@ def verificar_mac_mensaje():
 
 if __name__ == '__main__':
     root = tk.Tk()
-    root.title("Aplicación de Seguridad y Criptografía")
-    root.geometry("650x700")
+    root.title("Hospital Gregorio Marañón - Acceso Seguro")
+    root.geometry("700x750")
+
+    # Título Principal
+    tk.Label(root, text="Bienvenido al Sistema de Seguridad del Hospital Gregorio Marañón", font=("Arial", 16, "bold")).pack(pady=10)
 
     # Sección de Autenticación
+    tk.Label(root, text="**Acceso del Personal Autorizado**", font=("Arial", 12, "bold")).pack(pady=10)
     tk.Label(root, text="Usuario:").pack(pady=5)
     entry_usuario = tk.Entry(root)
     entry_usuario.pack(pady=5)
@@ -129,17 +131,18 @@ if __name__ == '__main__':
     entry_contraseña = tk.Entry(root, show="*")
     entry_contraseña.pack(pady=5)
 
-    tk.Button(root, text="Registrar Usuario", command=registrar_usuario).pack(pady=5)
-    tk.Button(root, text="Autenticar Usuario", command=autenticar).pack(pady=5)
-    tk.Button(root, text="Borrar Usuario", command=borrar).pack(pady=5)
+    tk.Button(root, text="Registrar Usuario", command=registrar_usuario, bg="lightblue").pack(pady=5)
+    tk.Button(root, text="Autenticar Usuario", command=autenticar, bg="lightgreen").pack(pady=5)
+    tk.Button(root, text="Borrar Usuario", command=borrar, bg="lightcoral").pack(pady=5)
 
-    # Sección de Cifrado
+    # Sección de Cifrado de Información Médica
+    tk.Label(root, text="**Gestión de Información Médica Confidencial**", font=("Arial", 12, "bold")).pack(pady=10)
     tk.Label(root, text="Mensaje a Cifrar/Descifrar:").pack(pady=5)
     entry_mensaje = tk.Entry(root)
     entry_mensaje.pack(pady=5)
 
-    tk.Button(root, text="Cifrar Mensaje", command=cifrar_mensaje).pack(pady=5)
-    tk.Button(root, text="Descifrar Mensaje", command=descifrar_mensaje).pack(pady=5)
+    tk.Button(root, text="Cifrar Mensaje", command=cifrar_mensaje, bg="lightblue").pack(pady=5)
+    tk.Button(root, text="Descifrar Mensaje", command=descifrar_mensaje, bg="lightgreen").pack(pady=5)
 
     tk.Label(root, text="IV (Vector de Inicialización):").pack(pady=5)
     entry_iv = tk.Entry(root)
@@ -149,13 +152,13 @@ if __name__ == '__main__':
     entry_ct = tk.Entry(root)
     entry_ct.pack(pady=5)
 
-    # Sección de MAC
-    tk.Button(root, text="Generar MAC", command=generar_mac_mensaje).pack(pady=5)
+    # Sección de MAC (Integridad de Mensajes)
+    tk.Label(root, text="**Generación y Verificación de MAC para Mensajes**", font=("Arial", 12, "bold")).pack(pady=10)
+    tk.Button(root, text="Generar MAC", command=generar_mac_mensaje, bg="lightblue").pack(pady=5)
     tk.Label(root, text="MAC:").pack(pady=5)
     entry_mac = tk.Entry(root)
     entry_mac.pack(pady=5)
 
-    tk.Button(root, text="Verificar MAC", command=verificar_mac_mensaje).pack(pady=5)
+    tk.Button(root, text="Verificar MAC", command=verificar_mac_mensaje, bg="lightgreen").pack(pady=5)
 
-    # Iniciar la ventana
     root.mainloop()
