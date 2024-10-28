@@ -8,8 +8,7 @@ from Crypto.Cipher import AES
 from Crypto.Protocol.KDF import PBKDF2
 from Crypto.Random import get_random_bytes
 
-from autenticacion_mensajes import generar_mac, verificar_mac  # Asegúrate de incluir esta línea
-# Importar las funciones necesarias desde otros módulos
+from autenticacion_mensajes import generar_mac, verificar_mac
 from cifrado_simetrico import cifrar_datos, descifrar_datos
 from usuario_autenticacion import guardar_usuario, autenticar_usuario, borrar_usuario
 
