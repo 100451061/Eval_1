@@ -1,3 +1,4 @@
+import datetime
 import os
 import sqlite3
 
@@ -55,6 +56,28 @@ def cargar_clave():
     if row is None:
         raise ValueError("No se encontró una clave maestra.")
     return row[0]  # Devuelve la clave en formato binario (BLOB)
+
+
+# mejora extra
+
+
+def rotar_clave_si_necesario():
+    ultima_rotacion = obtener_fecha_ultima_rotacion()
+    hoy = datetime.date.today()
+    if (hoy - ultima_rotacion).days > 90:
+        nueva_clave = generar_clave()
+        almacenar_clave(nueva_clave)
+        actualizar_fecha_ultima_rotacion(hoy)
+
+
+def obtener_fecha_ultima_rotacion():
+    # Aquí leerías la última fecha de rotación almacenada en una tabla de metadatos
+    pass
+
+
+def actualizar_fecha_ultima_rotacion(fecha):
+    # Aquí actualizarías la fecha de rotación en la base de datos
+    pass
 
 
 # Cifrar y autenticar datos utilizando AES-GCM
