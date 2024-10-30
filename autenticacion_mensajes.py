@@ -18,7 +18,8 @@ def generar_clave_hmac():
 
 
 # Almacenar la clave HMAC en la base de datos
-def almacenar_clave_hmac(clave_hmac):
+def almacenar_clave_hmac():
+    clave_hmac = generar_clave_hmac()
     conexion = sqlite3.connect(DB_PATH)
     cursor = conexion.cursor()
     cursor.execute('''

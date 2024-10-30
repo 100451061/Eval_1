@@ -1,13 +1,18 @@
 import tkinter as tk
 from tkinter import messagebox
 
-from autenticacion_mensajes import almacenar_mensaje, verificar_mensaje
+from autenticacion_mensajes import almacenar_mensaje, verificar_mensaje, almacenar_clave_hmac, cargar_clave_hmac
 from cifrado_simetrico import almacenar_datos_cifrados, descifrar_datos
-# Importar las funciones de los otros archivos
 from usuario_autenticacion import registrar_usuario, autenticar_usuario
 
 # Ruta de la base de datos
 DB_PATH = "hospital.db"
+
+# Inicializa la clave HMAC solo si no existe
+try:
+    cargar_clave_hmac()  # Intenta cargar la clave existente
+except ValueError:
+    almacenar_clave_hmac()  # Si no existe, crea y almacena la clave
 
 # Crear la ventana principal
 root = tk.Tk()
