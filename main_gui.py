@@ -1,3 +1,4 @@
+import sqlite3
 import tkinter as tk
 from tkinter import messagebox, Toplevel
 
@@ -11,7 +12,7 @@ DB_PATH = "hospital.db"
 # Crear la ventana principal para registrar y autenticar
 root = tk.Tk()
 root.title("Sistema de Seguridad del Hospital - Inicio de Sesión")
-root.geometry("400x300")
+root.geometry("400x400")
 
 # Variables para los campos de entrada
 usuario_var = tk.StringVar()
@@ -46,7 +47,7 @@ def autenticar():
 def abrir_ventana_mensajes():
     ventana_mensajes = Toplevel(root)
     ventana_mensajes.title("Sistema de Seguridad del Hospital - Cifrado de Mensajes")
-    ventana_mensajes.geometry("400x500")
+    ventana_mensajes.geometry("400x600")
 
     # Elementos de la segunda ventana
     tk.Label(ventana_mensajes, text="Mensaje para cifrar/autenticar").pack()
@@ -60,6 +61,11 @@ def abrir_ventana_mensajes():
     tk.Button(ventana_mensajes, text="Descifrar Mensaje", command=descifrar_mensaje).pack()
     tk.Button(ventana_mensajes, text="Autenticar Mensaje (HMAC)", command=autenticar_mensaje).pack()
     tk.Button(ventana_mensajes, text="Verificar Autenticidad", command=verificar_autenticidad).pack()
+
+    # Botones para limpiar las tablas de la base de datos
+    tk.Button(ventana_mensajes, text="Limpiar Usuarios", command=limpiar_usuarios).pack()
+    tk.Button(ventana_mensajes, text="Limpiar Mensajes Cifrados", command=limpiar_mensajes_cifrados).pack()
+    tk.Button(ventana_mensajes, text="Limpiar Mensajes Autenticados", command=limpiar_mensajes_autenticados).pack()
 
     # Botón de "Salir" en la segunda ventana
     tk.Button(ventana_mensajes, text="Salir", command=root.quit).pack()
@@ -103,6 +109,34 @@ def verificar_autenticidad():
             messagebox.showwarning("Verificación", "El mensaje no es auténtico.")
     except Exception as e:
         messagebox.showerror("Error", str(e))
+
+
+# Funciones para limpiar las tablas en la base de datos
+def limpiar_usuarios():
+    conexion = sqlite3.connect(DB_PATH)
+    cursor = conexion.cursor()
+    cursor.execute("DELETE FROM usuarios")
+    conexion.commit()
+    conexion.close()
+    messagebox.showinfo("Limpiar Usuarios", "Todos los usuarios han sido eliminados.")
+
+
+def limpiar_mensajes_cifrados():
+    conexion = sqlite3.connect(DB_PATH)
+    cursor = conexion.cursor()
+    cursor.execute("DELETE FROM datos_protegidos")
+    conexion.commit()
+    conexion.close()
+    messagebox.showinfo("Limpiar Mensajes Cifrados", "Todos los mensajes cifrados han sido eliminados.")
+
+
+def limpiar_mensajes_autenticados():
+    conexion = sqlite3.connect(DB_PATH)
+    cursor = conexion.cursor()
+    cursor.execute("DELETE FROM mensajes_autenticados")
+    conexion.commit()
+    conexion.close()
+    messagebox.showinfo("Limpiar Mensajes Autenticados", "Todos los mensajes autenticados han sido eliminados.")
 
 
 # Elementos de la ventana principal para registro y autenticación
