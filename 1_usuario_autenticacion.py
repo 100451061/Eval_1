@@ -1,8 +1,11 @@
-import sqlite3  # Librería para manejar la base de datos SQLite
+import os
+import sqlite3
 
-import bcrypt  # Librería para hashing seguro de contraseñas
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes, hmac
+from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
 
-# Ruta de la base de datos SQLite donde se almacenarán los usuarios
+# Ruta de la base de datos SQLite
 DB_PATH = "hospital.db"
 
 
@@ -10,106 +13,118 @@ DB_PATH = "hospital.db"
 def inicializar_bd():
     """
     Inicializa la base de datos hospital.db y crea la tabla 'usuarios' si no existe.
-    La tabla 'usuarios' tiene dos columnas:
-    - usuario: Texto que actúa como clave primaria
-    - contraseña: Hash de la contraseña del usuario
+    La tabla 'usuarios' tiene tres columnas:
+    - usuario: Texto que actúa como clave primaria.
+    - salt: Salt utilizado para derivar la clave.
+    - pwd_hash: Hash de la contraseña derivado con Scrypt.
     """
-    conexion = sqlite3.connect(DB_PATH)  # Conectar a la base de datos
-    cursor = conexion.cursor()  # Crear un cursor para ejecutar comandos SQL
+    conexion = sqlite3.connect(DB_PATH)
+    cursor = conexion.cursor()
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS usuarios (
             usuario TEXT PRIMARY KEY,
-            contraseña TEXT NOT NULL
+            salt BLOB NOT NULL,
+            pwd_hash BLOB NOT NULL
         )
     ''')
-    conexion.commit()  # Guardar cambios en la base de datos
-    conexion.close()  # Cerrar la conexión
+    conexion.commit()
+    conexion.close()
 
 
-# Función para leer todos los usuarios desde la base de datos
-def leer_usuarios():
+# Función para generar el hash de la contraseña usando Scrypt
+def generar_pwd_hash(contrasena, salt):
     """
-    Lee todos los usuarios y sus contraseñas (hashes) desde la base de datos y los devuelve en un diccionario.
+    Genera un hash seguro de la contraseña usando Scrypt y un salt único.
+    Argumentos:
+        contrasena (str): La contraseña en texto plano.
+        salt (bytes): Un valor aleatorio único.
     Retorna:
-        dict: Un diccionario donde la clave es el nombre de usuario y el valor es el hash de la contraseña.
+        bytes: El hash de la contraseña.
     """
-    conexion = sqlite3.connect(DB_PATH)  # Conectar a la base de datos
-    cursor = conexion.cursor()
-    cursor.execute("SELECT usuario, contraseña FROM usuarios")  # Obtener todos los usuarios y contraseñas
-    usuarios = {row[0]: row[1] for row in cursor.fetchall()}  # Convertir los resultados en un diccionario
-    conexion.close()  # Cerrar la conexión
-    return usuarios
+    kdf = Scrypt(
+        salt=salt,
+        length=32,
+        n=2 ** 14,
+        r=8,
+        p=1,
+        backend=default_backend()
+    )
+    return kdf.derive(contrasena.encode())
 
 
 # Función para registrar un nuevo usuario
-def registrar_usuario(usuario, contraseña):
+def registrar_usuario(usuario, contrasena):
     """
-    Registra un nuevo usuario en la base de datos con una contraseña encriptada.
-    Si el usuario ya existe, lanza un error.
+    Registra un nuevo usuario en la base de datos con una contraseña hasheada.
     Argumentos:
         usuario (str): Nombre de usuario.
-        contraseña (str): Contraseña en texto claro.
+        contrasena (str): Contraseña en texto claro.
     """
-    usuarios = leer_usuarios()  # Leer todos los usuarios
+    salt = os.urandom(16)  # Genera un salt único de 16 bytes
+    pwd_hash = generar_pwd_hash(contrasena, salt)  # Genera el hash de la contraseña
 
-    if usuario in usuarios:  # Verificar si el usuario ya existe
-        raise ValueError("El usuario ya existe.")
-
-    # Generar hash seguro para la contraseña
-    hashed = bcrypt.hashpw(contraseña.encode(), bcrypt.gensalt()).decode()
-
-    # Guardar el usuario y la contraseña hasheada en la base de datos
+    # Guardar el usuario, salt y hash en la base de datos
     conexion = sqlite3.connect(DB_PATH)
     cursor = conexion.cursor()
-    cursor.execute("INSERT INTO usuarios (usuario, contraseña) VALUES (?, ?)", (usuario, hashed))
-    conexion.commit()  # Guardar cambios en la base de datos
-    conexion.close()  # Cerrar la conexión
-    print("Usuario registrado exitosamente.")
+    cursor.execute("INSERT INTO usuarios (usuario, salt, pwd_hash) VALUES (?, ?, ?)",
+                   (usuario, salt, pwd_hash))
+    conexion.commit()
+    conexion.close()
+    print(f"Usuario '{usuario}' registrado exitosamente.")
 
 
 # Función para autenticar un usuario
-def autenticar_usuario(usuario, contraseña):
+def autenticar_usuario(usuario, contrasena):
     """
     Autentica a un usuario verificando que la contraseña ingresada coincida con el hash almacenado.
     Argumentos:
         usuario (str): Nombre de usuario.
-        contraseña (str): Contraseña en texto claro.
+        contrasena (str): Contraseña en texto claro.
     Retorna:
         str: Mensaje indicando si la autenticación fue exitosa o si hubo un error.
     """
-    # Conectar a la base de datos y recuperar el hash de la contraseña para el usuario dado
+    # Recuperar el salt y hash de la base de datos
     conexion = sqlite3.connect(DB_PATH)
     cursor = conexion.cursor()
-    cursor.execute("SELECT contraseña FROM usuarios WHERE usuario = ?", (usuario,))
-    row = cursor.fetchone()  # Obtener el resultado de la consulta
-    conexion.close()  # Cerrar la conexión
+    cursor.execute("SELECT salt, pwd_hash FROM usuarios WHERE usuario = ?", (usuario,))
+    row = cursor.fetchone()
+    conexion.close()
 
-    if row is None:  # Verificar si el usuario no existe
+    if row is None:
         return "Usuario no encontrado"
 
-    hashed = row[0].encode()  # Obtener el hash almacenado
-    # Comparar la contraseña ingresada con el hash usando bcrypt
-    if bcrypt.checkpw(contraseña.encode(), hashed):
+    salt, stored_pwd_hash = row
+
+    # Intentar derivar el hash con la contraseña ingresada
+    try:
+        kdf = Scrypt(
+            salt=salt,
+            length=32,
+            n=2 ** 14,
+            r=8,
+            p=1,
+            backend=default_backend()
+        )
+        kdf.verify(contrasena.encode(), stored_pwd_hash)  # Verifica que el hash coincide
         return "Autenticación exitosa"
-    else:
+    except Exception:
         return "Contraseña incorrecta"
 
 
-# Función para eliminar un usuario de la base de datos
-def eliminar_usuario(usuario):
+# Función para generar un HMAC
+def generar_hmac(mensaje, clave):
     """
-    Elimina un usuario específico de la base de datos.
+    Genera un código HMAC para verificar la integridad de un mensaje.
     Argumentos:
-        usuario (str): Nombre de usuario a eliminar.
+        mensaje (bytes): Mensaje que queremos proteger.
+        clave (bytes): Clave secreta para el HMAC.
+    Retorna:
+        bytes: El código HMAC.
     """
-    conexion = sqlite3.connect(DB_PATH)  # Conectar a la base de datos
-    cursor = conexion.cursor()
-    cursor.execute("DELETE FROM usuarios WHERE usuario = ?", (usuario,))  # Eliminar el usuario
-    conexion.commit()  # Guardar cambios en la base de datos
-    conexion.close()  # Cerrar la conexión
+    h = hmac.HMAC(clave, hashes.SHA256(), backend=default_backend())
+    h.update(mensaje)
+    return h.finalize()
 
-    # Confirmar si el usuario fue eliminado
-    if cursor.rowcount > 0:
-        print("Usuario eliminado exitosamente.")
-    else:
-        print("Usuario no encontrado.")
+
+# Inicializar la base de datos
+inicializar_bd()
