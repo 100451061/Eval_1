@@ -1,6 +1,9 @@
-import hashlib
 import hmac
+import os
 import sqlite3
+
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes, hmac
 
 # La autenticación de mensajes se asegura de que un mensaje recibido es auténtico y no ha sido modificado en el camino. Esto se logra
 # generando un Código de Autenticación de Mensajes (MAC)
@@ -18,91 +21,89 @@ import sqlite3
 # Ampliamente adoptado: HMAC se utiliza en muchos sistemas y protocolos, como TLS y APIs web, por su seguridad y eficiencia.
 
 
-# Ruta de la base de datos
+# Ruta a la base de datos
 DB_PATH = "hospital.db"
 
 
-# Inicializar la base de datos y crear la tabla de autenticación de mensajes si no existe
-def inicializar_bd():
-    """
-    Inicializa la base de datos y crea la tabla de mensajes autenticados si no existe.
-    """
+# Generar clave secreta para HMAC
+def generar_clave_hmac():
+    return os.urandom(32)  # Clave de 256 bits
+
+
+# Almacenar la clave HMAC en la base de datos
+def almacenar_clave_hmac(clave_hmac):
     conexion = sqlite3.connect(DB_PATH)
     cursor = conexion.cursor()
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS autenticacion_mensajes (
+        CREATE TABLE IF NOT EXISTS clave_hmac (
+            id INTEGER PRIMARY KEY,
+            clave BLOB NOT NULL
+        )
+    ''')
+    cursor.execute("INSERT OR REPLACE INTO clave_hmac (id, clave) VALUES (1, ?)", (clave_hmac,))
+    conexion.commit()
+    conexion.close()
+
+
+# Cargar la clave HMAC desde la base de datos
+def cargar_clave_hmac():
+    conexion = sqlite3.connect(DB_PATH)
+    cursor = conexion.cursor()
+    cursor.execute("SELECT clave FROM clave_hmac WHERE id = 1")
+    row = cursor.fetchone()
+    conexion.close()
+    if row is None:
+        raise ValueError("No se encontró una clave HMAC.")
+    return row[0]
+
+
+# Generar HMAC para un mensaje
+def generar_hmac(mensaje):
+    clave_hmac = cargar_clave_hmac()
+    h = hmac.HMAC(clave_hmac, hashes.SHA256(), backend=default_backend())
+    h.update(mensaje.encode())
+    return h.finalize()
+
+
+# Almacenar mensaje y su HMAC en la base de datos
+def almacenar_mensaje(mensaje):
+    mac = generar_hmac(mensaje)
+    conexion = sqlite3.connect(DB_PATH)
+    cursor = conexion.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS mensajes_autenticados (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             mensaje TEXT NOT NULL,
             mac BLOB NOT NULL
         )
     ''')
+    cursor.execute("INSERT INTO mensajes_autenticados (mensaje, hmac) VALUES (?, ?)", (mensaje, mac))
     conexion.commit()
     conexion.close()
-
-
-# Generar un HMAC para un mensaje dado
-def generar_hmac(mensaje, clave_secreta):
-    """
-    Genera un HMAC del mensaje usando la clave secreta y SHA-256.
-    Argumentos:
-        mensaje (str): El mensaje a autenticar.
-        clave_secreta (bytes): La clave secreta compartida para el HMAC.
-    Retorna:
-        bytes: El código HMAC generado.
-    """
-    hmac_obj = hmac.new(clave_secreta, mensaje.encode(), hashlib.sha256)
-    return hmac_obj.digest()
-
-
-# Guardar un mensaje y su MAC en la base de datos
-def guardar_mensaje_autenticado(mensaje, clave_secreta):
-    """
-    Cifra el mensaje con HMAC-SHA256 y lo guarda en la base de datos.
-    Argumentos:
-        mensaje (str): El mensaje a autenticar.
-        clave_secreta (bytes): La clave secreta compartida.
-    """
-    mac = generar_hmac(mensaje, clave_secreta)
-
-    conexion = sqlite3.connect(DB_PATH)
-    cursor = conexion.cursor()
-    cursor.execute("INSERT INTO autenticacion_mensajes (mensaje, mac) VALUES (?, ?)", (mensaje, mac))
-
-    conexion.commit()
-    conexion.close()
-    print("Mensaje autenticado y guardado en la base de datos.")
+    print("Mensaje autenticado y almacenado en la base de datos.")
 
 
 # Verificar la autenticidad de un mensaje
-def verificar_mensaje(mensaje_id, mensaje, clave_secreta):
-    """
-    Verifica la autenticidad del mensaje comparando el MAC almacenado con uno recalculado.
-    Argumentos:
-        mensaje_id (int): ID del mensaje en la base de datos.
-        mensaje (str): El mensaje a verificar.
-        clave_secreta (bytes): La clave secreta compartida.
-    Retorna:
-        bool: True si el mensaje es auténtico, False en caso contrario.
-    """
-    mac_actual = generar_hmac(mensaje, clave_secreta)
-
-    # Recuperar el MAC original desde la base de datos
+def verificar_mensaje(mensaje_id, mensaje):
+    clave_hmac = cargar_clave_hmac()
     conexion = sqlite3.connect(DB_PATH)
     cursor = conexion.cursor()
-    cursor.execute("SELECT mac FROM autenticacion_mensajes WHERE id = ?", (mensaje_id,))
+    cursor.execute("SELECT hmac FROM mensajes_autenticados WHERE id = ?", (mensaje_id,))
     row = cursor.fetchone()
     conexion.close()
 
     if row is None:
-        print("No se encontró el mensaje en la base de datos.")
-        return False
+        raise ValueError("No se encontró el mensaje en la base de datos.")
 
     mac_almacenado = row[0]
 
-    # Comparar ambos MAC de forma segura
-    if hmac.compare_digest(mac_actual, mac_almacenado):
+    # Verificar el HMAC
+    h = hmac.HMAC(clave_hmac, hashes.SHA256(), backend=default_backend())
+    h.update(mensaje.encode())
+    try:
+        h.verify(mac_almacenado)
         print("El mensaje es auténtico.")
         return True
-    else:
+    except Exception:
         print("El mensaje no es auténtico.")
         return False
