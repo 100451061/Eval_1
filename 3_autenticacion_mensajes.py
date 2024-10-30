@@ -5,22 +5,6 @@ import sqlite3
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, hmac
 
-# La autenticación de mensajes se asegura de que un mensaje recibido es auténtico y no ha sido modificado en el camino. Esto se logra
-# generando un Código de Autenticación de Mensajes (MAC)
-
-# El MAC se deriva del mensaje y una clave secreta compartida entre el emisor y el receptor. Solo alguien con la clave secreta puede
-# crear y verificar este código, lo que da confianza en la fuente del mensaje y su contenido.
-
-
-# la opción más recomendada es MAC Basados en Funciones Hash (HMAC) basado en SHA-256 (en comparación a MAC Basados en Cifrado de Bloques:)
-
-# Seguro: SHA-256 proporciona una fuerte resistencia contra ataques, y HMAC es robusto contra ataques de colisión.
-
-# Fácil de implementar:  HMAC es ampliamente soportado en bibliotecas de Python y es eficiente en términos de rendimiento.
-
-# Ampliamente adoptado: HMAC se utiliza en muchos sistemas y protocolos, como TLS y APIs web, por su seguridad y eficiencia.
-
-
 # Ruta a la base de datos
 DB_PATH = "hospital.db"
 
