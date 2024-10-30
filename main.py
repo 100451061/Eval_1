@@ -1,3 +1,4 @@
+import re  # Asegúrate de importar re para las expresiones regulares
 import sqlite3
 import tkinter as tk
 from tkinter import messagebox, Toplevel
@@ -6,14 +7,23 @@ from autenticacion_mensajes import almacenar_mensaje, verificar_mensaje
 from cifrado_simetrico import almacenar_datos_cifrados, descifrar_datos
 from usuario_autenticacion import registrar_usuario, autenticar_usuario
 
+
+# Mejora extra :) nos aseguramos de tener al menos 8 caracteres y contener letras y números
+def validar_datos_usuario(usuario, contrasena):
+    if not re.match("^[A-Za-z0-9]+$", usuario):
+        raise ValueError("El nombre de usuario debe contener solo letras y números.")
+    if len(contrasena) < 8 or not re.search("[A-Za-z]", contrasena) or not re.search("[0-9]", contrasena):
+        raise ValueError("La contraseña debe tener al menos 8 caracteres y contener letras y números.")
+
+
 # Ruta de la base de datos
 DB_PATH = "hospital.db"
 
 # Configuración de la ventana principal de la aplicación
 root = tk.Tk()
-root.title("Sistema de Seguridad del Hospital - Inicio de Sesión")  # Título de la ventana
-root.geometry("400x400")  # Tamaño de la ventana principal
-root.configure(bg="#f0f4f8")  # Color de fondo de la ventana
+root.title("Sistema de Seguridad del Hospital - Inicio de Sesión")
+root.geometry("400x400")
+root.configure(bg="#f0f4f8")
 
 # Variables para almacenar entradas de usuario
 usuario_var = tk.StringVar()
@@ -31,6 +41,8 @@ def registrar():
     usuario = usuario_var.get()
     contrasena = contrasena_var.get()
     try:
+        # Validamos los datos del usuario antes de registrarlo
+        validar_datos_usuario(usuario, contrasena)
         registrar_usuario(usuario, contrasena)
         messagebox.showinfo("Registro", f"Usuario '{usuario}' registrado exitosamente.")
     except Exception as e:
