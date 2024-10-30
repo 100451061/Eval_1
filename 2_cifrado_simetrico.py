@@ -13,7 +13,8 @@ from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 # (iv vector de inicialización, Nonce)
 
 
-# Ruta a la base de datos
+# creamos la tabla clave-maestra
+# creamos la tabla datos_protegidos
 DB_PATH = "hospital.db"
 
 

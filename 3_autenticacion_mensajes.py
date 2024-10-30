@@ -5,7 +5,10 @@ import sqlite3
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, hmac
 
-# Ruta a la base de datos
+# creamos tabla clave_hmac
+# creamos tabla mensajes_autenticados
+
+
 DB_PATH = "hospital.db"
 
 

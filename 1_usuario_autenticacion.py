@@ -6,7 +6,7 @@ from cryptography.hazmat.primitives import hashes, hmac
 from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
 
 # creamos la tabla usuarios
-# Ruta de la base de datos SQLite
+
 DB_PATH = "hospital.db"
 
 
