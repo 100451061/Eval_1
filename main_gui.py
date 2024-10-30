@@ -61,6 +61,9 @@ def abrir_ventana_mensajes():
     tk.Button(ventana_mensajes, text="Autenticar Mensaje (HMAC)", command=autenticar_mensaje).pack()
     tk.Button(ventana_mensajes, text="Verificar Autenticidad", command=verificar_autenticidad).pack()
 
+    # Botón de "Salir" en la segunda ventana
+    tk.Button(ventana_mensajes, text="Salir", command=root.quit).pack()
+
 
 # Funciones de la GUI para el manejo de mensajes
 def cifrar_mensaje():
@@ -111,6 +114,9 @@ tk.Entry(root, textvariable=contrasena_var, show="*").pack()
 
 tk.Button(root, text="Registrar", command=registrar).pack()
 tk.Button(root, text="Autenticar", command=autenticar).pack()
+
+# Botón de "Salir" en la ventana principal
+tk.Button(root, text="Salir", command=root.quit).pack()
 
 # Iniciar la aplicación
 root.mainloop()
