@@ -1,12 +1,10 @@
 import tkinter as tk
 from tkinter import messagebox
-import sqlite3
 
+from autenticacion_mensajes import almacenar_mensaje, verificar_mensaje
+from cifrado_simetrico import almacenar_datos_cifrados, descifrar_datos
 # Importar las funciones de los otros archivos
 from usuario_autenticacion import registrar_usuario, autenticar_usuario
-from cifrado_simetrico import almacenar_datos_cifrados, descifrar_datos
-from autenticacion_mensajes import almacenar_mensaje, verificar_mensaje
-
 
 # Ruta de la base de datos
 DB_PATH = "hospital.db"
@@ -22,6 +20,7 @@ contrasena_var = tk.StringVar()
 mensaje_var = tk.StringVar()
 mensaje_id_var = tk.StringVar()
 
+
 # Funciones de la GUI
 def registrar():
     usuario = usuario_var.get()
@@ -32,11 +31,13 @@ def registrar():
     except Exception as e:
         messagebox.showerror("Error", str(e))
 
+
 def autenticar():
     usuario = usuario_var.get()
     contrasena = contrasena_var.get()
     resultado = autenticar_usuario(usuario, contrasena)
     messagebox.showinfo("Autenticación", resultado)
+
 
 def cifrar_mensaje():
     mensaje = mensaje_var.get()
@@ -46,6 +47,7 @@ def cifrar_mensaje():
     except Exception as e:
         messagebox.showerror("Error", str(e))
 
+
 def descifrar_mensaje():
     mensaje_id = mensaje_id_var.get()
     try:
@@ -54,6 +56,7 @@ def descifrar_mensaje():
     except Exception as e:
         messagebox.showerror("Error", str(e))
 
+
 def autenticar_mensaje():
     mensaje = mensaje_var.get()
     try:
@@ -61,6 +64,7 @@ def autenticar_mensaje():
         messagebox.showinfo("HMAC", "Mensaje autenticado y almacenado correctamente.")
     except Exception as e:
         messagebox.showerror("Error", str(e))
+
 
 def verificar_autenticidad():
     mensaje_id = mensaje_id_var.get()
@@ -72,6 +76,7 @@ def verificar_autenticidad():
             messagebox.showwarning("Verificación", "El mensaje no es auténtico.")
     except Exception as e:
         messagebox.showerror("Error", str(e))
+
 
 # Elementos de la GUI
 tk.Label(root, text="Usuario").pack()
