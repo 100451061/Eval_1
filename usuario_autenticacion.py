@@ -1,4 +1,5 @@
 import os
+import re
 import sqlite3
 
 from cryptography.hazmat.backends import default_backend
@@ -57,6 +58,14 @@ def generar_pwd_hash(contrasena, salt):
         backend=default_backend()
     )
     return kdf.derive(contrasena.encode())  # Convierte la contraseña en una clave derivada en bytes usando Scrypt.
+
+
+# mejora extra :) nos aseguramos de tener al menos 8 caracteres y contener letras y números
+def validar_datos_usuario(usuario, contrasena):
+    if not re.match("^[A-Za-z0-9]+$", usuario):
+        raise ValueError("El nombre de usuario debe contener solo letras y números.")
+    if len(contrasena) < 8 or not re.search("[A-Za-z]", contrasena) or not re.search("[0-9]", contrasena):
+        raise ValueError("La contraseña debe tener al menos 8 caracteres y contener letras y números.")
 
 
 # Registra un nuevo usuario en la base de datos
