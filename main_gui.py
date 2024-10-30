@@ -44,6 +44,25 @@ def autenticar():
         messagebox.showwarning("Autenticación", resultado)
 
 
+# Función para borrar un usuario después de la autenticación
+def borrar_usuario():
+    usuario = usuario_var.get()
+    contrasena = contrasena_var.get()
+    resultado = autenticar_usuario(usuario, contrasena)
+    if resultado == "Autenticación exitosa":
+        try:
+            conexion = sqlite3.connect(DB_PATH)
+            cursor = conexion.cursor()
+            cursor.execute("DELETE FROM usuarios WHERE usuario = ?", (usuario,))
+            conexion.commit()
+            conexion.close()
+            messagebox.showinfo("Borrar Usuario", f"Usuario '{usuario}' ha sido eliminado.")
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
+    else:
+        messagebox.showwarning("Autenticación Fallida", "Usuario o contraseña incorrectos.")
+
+
 # Crear la segunda ventana para el manejo de mensajes
 def abrir_ventana_mensajes():
     ventana_mensajes = Toplevel(root)
@@ -64,12 +83,13 @@ def abrir_ventana_mensajes():
     tk.Button(ventana_mensajes, text="Verificar Autenticidad", command=verificar_autenticidad).pack()
 
     # Botones para limpiar las tablas de la base de datos
-    tk.Button(ventana_mensajes, text="Limpiar Usuarios", command=limpiar_usuarios).pack()
-    tk.Button(ventana_mensajes, text="Limpiar Mensajes Cifrados", command=limpiar_mensajes_cifrados).pack()
-    tk.Button(ventana_mensajes, text="Limpiar Mensajes Autenticados", command=limpiar_mensajes_autenticados).pack()
+    tk.Label(ventana_mensajes, text="").pack()  # Espacio vacío para separar secciones
+    tk.Button(ventana_mensajes, text="Limpiar Usuarios", command=limpiar_usuarios).pack(pady=(20, 5))
+    tk.Button(ventana_mensajes, text="Limpiar Mensajes Cifrados", command=limpiar_mensajes_cifrados).pack(pady=5)
+    tk.Button(ventana_mensajes, text="Limpiar Mensajes Autenticados", command=limpiar_mensajes_autenticados).pack(pady=5)
 
     # Botón de "Salir" en la segunda ventana
-    tk.Button(ventana_mensajes, text="Salir", command=root.quit).pack()
+    tk.Button(ventana_mensajes, text="Salir", command=ventana_mensajes.destroy).pack(pady=(20, 0))
 
 
 # Funciones de la GUI para el manejo de mensajes
@@ -140,7 +160,7 @@ def limpiar_mensajes_autenticados():
     messagebox.showinfo("Limpiar Mensajes Autenticados", "Todos los mensajes autenticados han sido eliminados.")
 
 
-# Elementos de la ventana principal para registro y autenticación
+# Elementos de la ventana principal para registro, autenticación y eliminación de usuario
 tk.Label(root, text="Usuario").pack()
 tk.Entry(root, textvariable=usuario_var).pack()
 
@@ -149,6 +169,7 @@ tk.Entry(root, textvariable=contrasena_var, show="*").pack()
 
 tk.Button(root, text="Registrar", command=registrar).pack()
 tk.Button(root, text="Autenticar", command=autenticar).pack()
+tk.Button(root, text="Borrar Usuario", command=borrar_usuario).pack(pady=(10, 20))
 
 # Botón de "Salir" en la ventana principal
 tk.Button(root, text="Salir", command=root.quit).pack()
