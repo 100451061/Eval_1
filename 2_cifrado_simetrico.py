@@ -10,17 +10,22 @@ from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 # creamos la tabla clave-maestra
 # creamos la tabla datos_protegidos
 
+# (iv vector de inicialización, Nonce)
+
+
 # Ruta a la base de datos
 DB_PATH = "hospital.db"
 
 
 # Generar clave para AES-GCM (32 bytes para AES-256)
 def generar_clave():
+    """Generación de la clave: Se genera una clave de 256 bits para AES-GCM."""
     return os.urandom(32)
 
 
 # Guardar clave en la base de datos
 def almacenar_clave(clave):
+    """Almacenamiento de la clave: Se guarda la clave en la tabla clave_maestra en la base de datos."""
     conexion = sqlite3.connect(DB_PATH)
     cursor = conexion.cursor()
     cursor.execute('''
@@ -46,8 +51,9 @@ def cargar_clave():
     return row[0]
 
 
-# Cifrar datos con AES-GCM
+# Cifrar datos con AES-GCM y autenticarlos
 def cifrar_datos(datos, clave):
+    """Cifrado de datos con AES-GCM: Usa un nonce (IV) de 12 bytes para cada cifrado. AES-GCM cifra y autentica el mensaje a la vez."""
     iv = os.urandom(12)  # Nonce de 12 bytes para GCM
     cifrador = Cipher(algorithms.AES(clave), modes.GCM(iv), backend=default_backend()).encryptor()
     texto_cifrado = cifrador.update(datos.encode()) + cifrador.finalize()
@@ -56,6 +62,7 @@ def cifrar_datos(datos, clave):
 
 # Almacenar datos cifrados en la base de datos
 def almacenar_datos_cifrados(mensaje):
+    """Almacena el iv, texto_cifrado y tag (etiqueta de autenticación) en la tabla datos_protegidos en hospital.db."""
     clave = cargar_clave()
     iv, texto_cifrado, tag = cifrar_datos(mensaje, clave)
 
@@ -77,6 +84,8 @@ def almacenar_datos_cifrados(mensaje):
 
 # Descifrar datos con AES-GCM
 def descifrar_datos(mensaje_id):
+    """ Recupera el mensaje cifrado, el iv y el tag desde la base de datos y verifica la autenticidad del mensaje antes de descifrarlo.
+    Si el tag no coincide, la autenticación fallará."""
     clave = cargar_clave()
     conexion = sqlite3.connect(DB_PATH)
     cursor = conexion.cursor()
