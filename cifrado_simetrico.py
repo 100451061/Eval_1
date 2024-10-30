@@ -4,29 +4,30 @@ import sqlite3
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
-# Usaremos el modo de operación AES-GCM para cifrar y autenticar los datos.
-# AES- Galois/Counter Mode
-
-# creamos la tabla clave-maestra
-# creamos la tabla datos_protegidos
-
-# (iv vector de inicialización, Nonce)
-
-
-# creamos la tabla clave-maestra
-# creamos la tabla datos_protegidos
+# Ruta a la base de datos
 DB_PATH = "hospital.db"
 
 
-# Generar clave para AES-GCM (32 bytes para AES-256)
+# Usamos AES-GCM (AES en Galois/Counter Mode) para cifrar los datos.
+# AES-GCM proporciona cifrado autenticado, lo que significa que los datos son cifrados y autenticados al mismo tiempo.
+
+# Generar una clave de cifrado de 256 bits (32 bytes) para AES-GCM
 def generar_clave():
-    """Generación de la clave: Se genera una clave de 256 bits para AES-GCM."""
-    return os.urandom(32)
+    """
+    Genera una clave segura para AES-GCM, utilizando una longitud de 256 bits (32 bytes).
+    Esto asegura un nivel de cifrado adecuado para la protección de datos.
+    """
+    return os.urandom(32)  # Genera una clave aleatoria de 32 bytes
 
 
-# Guardar clave en la base de datos
+# Almacenar la clave maestra en la base de datos para recuperarla luego
 def almacenar_clave(clave):
-    """Almacenamiento de la clave: Se guarda la clave en la tabla clave_maestra en la base de datos."""
+    """
+    Guarda la clave maestra en una tabla en la base de datos.
+    - Si la tabla no existe, la crea con los siguientes campos:
+        - id: Identificador único de la clave maestra.
+        - clave: Clave cifrada almacenada en formato BLOB (datos binarios).
+    """
     conexion = sqlite3.connect(DB_PATH)
     cursor = conexion.cursor()
     cursor.execute('''
@@ -40,8 +41,12 @@ def almacenar_clave(clave):
     conexion.close()
 
 
-# Recuperar clave de la base de datos
+# Recuperar la clave de la base de datos
 def cargar_clave():
+    """
+    Recupera la clave maestra almacenada en la base de datos.
+    - Si no se encuentra, lanza una excepción para notificar al usuario.
+    """
     conexion = sqlite3.connect(DB_PATH)
     cursor = conexion.cursor()
     cursor.execute("SELECT clave FROM clave_maestra WHERE id = 1")
@@ -49,22 +54,61 @@ def cargar_clave():
     conexion.close()
     if row is None:
         raise ValueError("No se encontró una clave maestra.")
-    return row[0]
+    return row[0]  # Devuelve la clave en formato binario (BLOB)
 
 
-# Cifrar datos con AES-GCM y autenticarlos
+# Cifrar y autenticar datos utilizando AES-GCM
 def cifrar_datos(datos, clave):
-    """Cifrado de datos con AES-GCM: Usa un nonce (IV) de 12 bytes para cada cifrado. AES-GCM cifra y autentica el mensaje a la vez."""
-    iv = os.urandom(12)  # Nonce de 12 bytes para GCM
+    """
+    Cifra y autentica los datos usando AES-GCM.
+    - datos (str): Datos en texto plano que se quieren cifrar.
+    - clave (bytes): Clave utilizada para el cifrado.
+    Retorna:
+        - iv: Nonce de 12 bytes utilizado para este cifrado (único por mensaje).
+        - texto_cifrado: Los datos cifrados.
+        - tag: Etiqueta de autenticación para asegurar que los datos no fueron modificados.
+    """
+    iv = os.urandom(12)  # Nonce único para cada mensaje, necesario para AES-GCM
     cifrador = Cipher(algorithms.AES(clave), modes.GCM(iv), backend=default_backend()).encryptor()
     texto_cifrado = cifrador.update(datos.encode()) + cifrador.finalize()
     return iv, texto_cifrado, cifrador.tag
 
 
+# Descifrar los datos recuperándolos de la base de datos
+def descifrar_datos(mensaje_id):
+    """
+    Recupera y descifra un mensaje almacenado en la base de datos, asegurando su autenticidad.
+    - mensaje_id (int): ID único del mensaje cifrado en la base de datos.
+    Retorna el mensaje descifrado si la autenticación es exitosa.
+    """
+    clave = cargar_clave()  # Carga la clave maestra para descifrar los datos
+    conexion = sqlite3.connect(DB_PATH)
+    cursor = conexion.cursor()
+    cursor.execute("SELECT iv, texto_cifrado, tag FROM datos_protegidos WHERE id = ?", (mensaje_id,))
+    row = cursor.fetchone()
+    conexion.close()
+
+    if row is None:
+        raise ValueError("No se encontró el mensaje cifrado con el ID proporcionado.")
+
+    iv, texto_cifrado, tag = row  # Recupera el nonce, los datos cifrados y la etiqueta de autenticación
+    descifrador = Cipher(algorithms.AES(clave), modes.GCM(iv, tag), backend=default_backend()).decryptor()
+    datos_descifrados = descifrador.update(texto_cifrado) + descifrador.finalize()  # Si el tag no coincide, lanzará una excepción
+    print("Datos descifrados exitosamente.")
+    return datos_descifrados.decode()  # Devuelve el mensaje en texto plano
+
+
 # Almacenar datos cifrados en la base de datos
 def almacenar_datos_cifrados(mensaje):
-    """Almacena el iv, texto_cifrado y tag (etiqueta de autenticación) en la tabla datos_protegidos en hospital.db."""
-    clave = cargar_clave()
+    """
+    Almacena los datos cifrados en la base de datos, junto con el nonce y la etiqueta de autenticación.
+    - mensaje (str): Mensaje en texto plano que será cifrado.
+    Almacena:
+        - iv: Nonce único para este mensaje cifrado.
+        - texto_cifrado: Los datos cifrados del mensaje.
+        - tag: Etiqueta de autenticación generada por AES-GCM.
+    """
+    clave = cargar_clave()  # Carga la clave maestra para cifrar los datos
     iv, texto_cifrado, tag = cifrar_datos(mensaje, clave)
 
     conexion = sqlite3.connect(DB_PATH)
@@ -81,24 +125,3 @@ def almacenar_datos_cifrados(mensaje):
     conexion.commit()
     conexion.close()
     print("Mensaje cifrado y almacenado en la base de datos.")
-
-
-# Descifrar datos con AES-GCM
-def descifrar_datos(mensaje_id):
-    """ Recupera el mensaje cifrado, el iv y el tag desde la base de datos y verifica la autenticidad del mensaje antes de descifrarlo.
-    Si el tag no coincide, la autenticación fallará."""
-    clave = cargar_clave()
-    conexion = sqlite3.connect(DB_PATH)
-    cursor = conexion.cursor()
-    cursor.execute("SELECT iv, texto_cifrado, tag FROM datos_protegidos WHERE id = ?", (mensaje_id,))
-    row = cursor.fetchone()
-    conexion.close()
-
-    if row is None:
-        raise ValueError("No se encontró el mensaje cifrado con el ID proporcionado.")
-
-    iv, texto_cifrado, tag = row
-    descifrador = Cipher(algorithms.AES(clave), modes.GCM(iv, tag), backend=default_backend()).decryptor()
-    datos_descifrados = descifrador.update(texto_cifrado) + descifrador.finalize()
-    print("Datos descifrados exitosamente.")
-    return datos_descifrados.decode()

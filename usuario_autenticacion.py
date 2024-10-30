@@ -5,98 +5,103 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, hmac
 from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
 
-# creamos la tabla usuarios
-
+# Ruta a la base de datos
 DB_PATH = "hospital.db"
 
 
-# Inicializar la base de datos y crear la tabla de usuarios si no existe
+# Inicializa la base de datos para almacenar usuarios
+# Utiliza SQLite para crear una tabla en la base de datos si aún no existe.
+# La tabla 'usuarios' almacena:
+# - usuario: Nombre de usuario, que actúa como clave primaria para evitar duplicados.
+# - salt: Salt aleatorio que se usará en la función Scrypt para la derivación de la contraseña.
+# - pwd_hash: Hash derivado de la contraseña usando Scrypt, almacenado como BLOB (Binary Large Object).
 def inicializar_bd():
     """
-    Inicializa la base de datos hospital.db y crea la tabla 'usuarios' si no existe.
-    La tabla 'usuarios' tiene tres columnas:
-    - usuario: Texto que actúa como clave primaria.
-    - salt: Salt utilizado para derivar la clave.
-    - pwd_hash: Hash de la contraseña derivado con Scrypt.
+    Inicializa la base de datos y crea la tabla 'usuarios' si no existe.
+    Esta tabla almacena:
+    - usuario: Nombre de usuario como clave primaria.
+    - salt: Salt (valor único y aleatorio) en formato BLOB (dato binario), que asegura la
+            unicidad del hash incluso si se usa la misma contraseña.
+    - pwd_hash: Hash de la contraseña, también en formato BLOB, para asegurar la confidencialidad
+                de la contraseña en la base de datos.
     """
-    conexion = sqlite3.connect(DB_PATH)
+    conexion = sqlite3.connect(DB_PATH)  # Conecta a la base de datos SQLite especificada en DB_PATH
     cursor = conexion.cursor()
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS usuarios (
             usuario TEXT PRIMARY KEY,
-            salt BLOB NOT NULL,
-            pwd_hash BLOB NOT NULL
+            salt BLOB NOT NULL,  
+            pwd_hash BLOB NOT NULL  
         )
     ''')
-    conexion.commit()
-    conexion.close()
+    conexion.commit()  # Confirma los cambios en la base de datos
+    conexion.close()  # Cierra la conexión a la base de datos
 
 
 # Función para generar el hash de la contraseña usando Scrypt
+# Utiliza Scrypt, un algoritmo que ayuda a derivar claves de forma segura, haciéndolo más resistente a ataques de fuerza bruta.
+# Se usa un salt único y un factor de dificultad (n, r, p) que hace que el hash sea costoso de calcular, aumentando la seguridad.
 def generar_pwd_hash(contrasena, salt):
     """
-    Genera un hash seguro de la contraseña usando Scrypt y un salt único.
-    Argumentos:
-        contrasena (str): La contraseña en texto plano.
-        salt (bytes): Un valor aleatorio único.
-    Retorna:
-        bytes: El hash de la contraseña.
+    Genera un hash seguro de la contraseña usando Scrypt.
+    - contrasena (str): La contraseña en texto plano que el usuario quiere proteger.
+    - salt (bytes): Valor aleatorio único que garantiza un hash único incluso si dos usuarios tienen la misma contraseña.
+    Retorna el hash resultante en bytes.
     """
     kdf = Scrypt(
-        salt=salt,
-        length=32,
-        n=2 ** 14,
-        r=8,
-        p=1,
+        salt=salt,  # Salt único y aleatorio para asegurar que el mismo texto de contraseña produzca diferentes hashes.
+        length=32,  # La longitud del hash generado en bytes, aquí 32 bytes (256 bits) para asegurar un nivel de seguridad adecuado.
+        n=2 ** 14,  # Factor de costo de CPU. Un valor más alto hace que el cálculo sea más lento, aumentando la resistencia a ataques.
+        r=8,  # Factor de costo de memoria, haciendo que se necesite más memoria para calcular el hash.
+        p=1,  # Factor de paralelización, controlando el número de operaciones simultáneas en el cálculo.
         backend=default_backend()
     )
-    return kdf.derive(contrasena.encode())
+    return kdf.derive(contrasena.encode())  # Convierte la contraseña en una clave derivada en bytes usando Scrypt.
 
 
-# Función para registrar un nuevo usuario
+# Registra un nuevo usuario en la base de datos
+# Esta función toma el nombre de usuario y la contraseña, y luego deriva un hash seguro de la contraseña.
+# Almacena el nombre de usuario, el salt, y el hash en la tabla 'usuarios'.
 def registrar_usuario(usuario, contrasena):
     """
-    Registra un nuevo usuario en la base de datos con una contraseña hasheada.
-    Argumentos:
-        usuario (str): Nombre de usuario.
-        contrasena (str): Contraseña en texto claro.
+    Registra un nuevo usuario en la base de datos con un hash de contraseña seguro.
+    - usuario (str): Nombre del usuario que se quiere registrar.
+    - contrasena (str): Contraseña en texto plano.
     """
-    salt = os.urandom(16)  # Genera un salt único de 16 bytes
-    pwd_hash = generar_pwd_hash(contrasena, salt)  # Genera el hash de la contraseña
+    salt = os.urandom(16)  # Genera un salt aleatorio de 16 bytes para usar en el hashing de la contraseña.
+    pwd_hash = generar_pwd_hash(contrasena, salt)  # Genera el hash de la contraseña usando el salt generado.
 
-    # Guardar el usuario, salt y hash en la base de datos
     conexion = sqlite3.connect(DB_PATH)
     cursor = conexion.cursor()
-    cursor.execute("INSERT INTO usuarios (usuario, salt, pwd_hash) VALUES (?, ?, ?)",
-                   (usuario, salt, pwd_hash))
+    cursor.execute("INSERT INTO usuarios (usuario, salt, pwd_hash) VALUES (?, ?, ?)", (usuario, salt, pwd_hash))
     conexion.commit()
     conexion.close()
-    print(f"Usuario '{usuario}' registrado exitosamente.")
+    print(f"Usuario '{usuario}' registrado exitosamente.")  # Mensaje informativo sobre el registro exitoso del usuario.
 
 
-# Función para autenticar un usuario
+# Autenticación de un usuario
+# Esta función verifica la contraseña ingresada con la almacenada en la base de datos.
+# Intenta generar el mismo hash y lo compara para determinar si la contraseña ingresada es correcta.
 def autenticar_usuario(usuario, contrasena):
     """
-    Autentica a un usuario verificando que la contraseña ingresada coincida con el hash almacenado.
-    Argumentos:
-        usuario (str): Nombre de usuario.
-        contrasena (str): Contraseña en texto claro.
-    Retorna:
-        str: Mensaje indicando si la autenticación fue exitosa o si hubo un error.
+    Verifica si la contraseña ingresada coincide con el hash almacenado para un usuario.
+    - usuario (str): Nombre de usuario.
+    - contrasena (str): Contraseña en texto claro que se va a verificar.
+    Retorna un mensaje que indica si la autenticación fue exitosa o fallida.
     """
-    # Recuperar el salt y hash de la base de datos
+    # Recuperar el salt y el hash de la base de datos para el usuario dado
     conexion = sqlite3.connect(DB_PATH)
     cursor = conexion.cursor()
     cursor.execute("SELECT salt, pwd_hash FROM usuarios WHERE usuario = ?", (usuario,))
     row = cursor.fetchone()
     conexion.close()
 
-    if row is None:
-        return "Usuario no encontrado"
+    if not row:
+        return "Usuario no encontrado"  # Mensaje de error si el usuario no existe en la base de datos.
 
-    salt, stored_pwd_hash = row
+    salt, stored_pwd_hash = row  # Desempaqueta el salt y el hash almacenado en la base de datos.
 
-    # Intentar derivar el hash con la contraseña ingresada
+    # Intentar verificar el hash usando la contraseña ingresada
     try:
         kdf = Scrypt(
             salt=salt,
@@ -106,26 +111,26 @@ def autenticar_usuario(usuario, contrasena):
             p=1,
             backend=default_backend()
         )
-        kdf.verify(contrasena.encode(), stored_pwd_hash)  # Verifica que el hash coincide
+        kdf.verify(contrasena.encode(), stored_pwd_hash)  # Verifica si el hash coincide con la contraseña.
         return "Autenticación exitosa"
     except Exception:
-        return "Contraseña incorrecta"
+        return "Contraseña incorrecta"  # Mensaje de error si la contraseña ingresada es incorrecta.
 
 
-# Función para generar un HMAC
+# Genera un HMAC (Hash-based Message Authentication Code)
+# Usado para asegurar la integridad de un mensaje y verificar que no haya sido alterado.
+# Un HMAC toma el mensaje y una clave secreta, y genera un código que sólo es posible verificar con la misma clave.
 def generar_hmac(mensaje, clave):
     """
     Genera un código HMAC para verificar la integridad de un mensaje.
-    Argumentos:
-        mensaje (bytes): Mensaje que queremos proteger.
-        clave (bytes): Clave secreta para el HMAC.
-    Retorna:
-        bytes: El código HMAC.
+    - mensaje (bytes): Mensaje que se quiere proteger.
+    - clave (bytes): Clave secreta utilizada para generar el HMAC.
+    Retorna el HMAC del mensaje.
     """
     h = hmac.HMAC(clave, hashes.SHA256(), backend=default_backend())
-    h.update(mensaje)
-    return h.finalize()
+    h.update(mensaje)  # Agrega el mensaje al objeto HMAC
+    return h.finalize()  # Devuelve el HMAC calculado.
 
 
-# Inicializar la base de datos
+# Inicialización de la base de datos para asegurar que la tabla exista antes de comenzar
 inicializar_bd()
